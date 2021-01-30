@@ -61,18 +61,17 @@ class SlideNormalizer:
         return goal/self.object_pos_mult[None] - self.object_pos_shift[None, :3]
 
 
-class FetchEnv(environment.GymEnv):
-    goal_dim = 3
+class SawyerEnv(environment.GymEnv):
+    goal_dim = 2
 
     def __init__(self, env_name: str, progressive_noise: bool, small_goal: bool, small_goal_size: float=0.005):
+        from multiworld.envs.mujoco import register_mujoco_envs
+        register_mujoco_envs()
         self._env = gym.make(env_name)
         if small_goal:
             print(f"small goal! ({small_goal_size})")
             self._env.unwrapped.distance_threshold = small_goal_size
-        if env_name == 'FetchSlide-v1':
-            self._normalizer = SlideNormalizer()  # not strictly necessary but slightly improves performance (~0.1) for both methods
-        if env_name == 'FetchPush-v1':
-            self._normalizer = NoNormalizer()
+        self._normalizer = NoNormalizer()
         self._env.seed(np.random.randint(10000) * 2)
         self._progressive_noise = progressive_noise
         super().__init__(self._env)
@@ -126,11 +125,12 @@ class FetchEnv(environment.GymEnv):
         return self._state, original_reward, is_terminal, info
 
 
-def make_env(env_name: str, progressive_noise: bool, small_goal: bool, small_goal_size: float=0.005) -> FetchEnv:
-    return FetchEnv(env_name, progressive_noise, small_goal, small_goal_size)
+def make_env(env_name: str, progressive_noise: bool, small_goal: bool,
+        small_goal_size: float=0.005) -> SawyerEnv:
+    return SawyerEnv(env_name, progressive_noise, small_goal, small_goal_size)
 
 
-def train_fetch(experiment: sacred.Experiment, agent: Any, eval_env: FetchEnv, progressive_noise: bool, small_goal: bool):
+def train_sawyer(experiment: sacred.Experiment, agent: Any, eval_env: SawyerEnv, progressive_noise: bool, small_goal: bool):
     reporting.register_field("eval_final_success")
     reporting.register_field("eval_success_rate")
     reporting.register_field("eval_final_distance")
@@ -150,8 +150,9 @@ def train_fetch(experiment: sacred.Experiment, agent: Any, eval_env: FetchEnv, p
             final_success = 0
             distances = 0
             final_distance = -1
-            for i in range(50):
+            for i in range(100):
                 state = eval_env.reset()
+                t = 0
                 while not eval_env.needs_reset:
                     action = agent.eval_action(state)
                     action_norms.append(np.linalg.norm(action))
@@ -159,7 +160,8 @@ def train_fetch(experiment: sacred.Experiment, agent: Any, eval_env: FetchEnv, p
                     final_distance = info['distance']
                     distances += final_distance
                     final_success = 0
-                    if reward > -1.:
+                    t += 1
+                    if reward > -1. or t == 100:
                         success_rate += 1
                         final_success = 1
                         break
@@ -186,8 +188,7 @@ def show_fetch():
     env_name = 'FetchPush-v1'
     eval_env = make_env(env_name, progressive_noise, small_goal)
 
-    # agent = torch.load('/home/anon/sacred_partition/param_test_1/deterministic_push_td3/1/policy_340000')
-    agent = torch.load('/home/vitchyr/mnt2/log2/uvd/sacred/fetch_push/2/policy_980000')
+    agent = torch.load('/home/anon/sacred_partition/param_test_1/deterministic_push_td3/1/policy_340000')
     success_rate = 0
     for i in range(200):
         state = eval_env.reset()

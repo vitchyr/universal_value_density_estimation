@@ -1,17 +1,11 @@
 import functools
 
-import sacred
-import torch
-import torch.nn.functional as f
-
 from algorithms.agents.hindsight import uvd
-from generative import rnvp
-from workflow import reporting
 from workflow import util
+from generative import rnvp
+from paper_experiments.experiments.hindsight.sawyer import *
 
-from paper_experiments.experiments.hindsight import fetch
-
-experiment = sacred.Experiment("Fetch - UVD")
+experiment = sacred.Experiment("Sawyer - UVD")
 
 
 class QNetwork(torch.nn.Module):
@@ -42,7 +36,7 @@ class DensityEstimator(torch.nn.Module):
         actions = torch.squeeze(actions, dim=1)
         context = torch.cat([states, actions], dim=1)
         # noinspection PyCallingNonCallable
-        goal = goal - states[:, 6:8]
+        # goal = goal - states[:, 6:8]
         goal_log_pdf = self._model(goal, context).sum(dim=1)
         return goal_log_pdf
 
@@ -65,20 +59,20 @@ def _config():
 @experiment.automain
 def _run(env_name: str, progressive_noise: bool, reward_factor: float, small_goal: bool, small_goal_size: float, num_bijectors: int, _config):
     device = torch.device('cuda:0')
-    target_dir = "/home/vitchyr/mnt2/log2/uvd/generated_data/algorithms"
+    target_dir = "/home/vitchyr/mnt2/log2/uvd/generated_data/sawyer/algorithms/"
     reporting.register_global_reporter(experiment, target_dir)
-    eval_env = fetch.make_env(env_name, progressive_noise, small_goal, small_goal_size)
+    eval_env = make_env(env_name, progressive_noise, small_goal, small_goal_size)
     state_dim = eval_env.observation_space.shape[0]
     action_dim = eval_env.action_space.shape[0]
     q1 = QNetwork(state_dim, action_dim).to(device)
     q2 = QNetwork(state_dim, action_dim).to(device)
     density_model = DensityEstimator(state_dim, action_dim, reward_factor, num_bijectors).to(device)
-    policy = fetch.PolicyNetwork(state_dim, action_dim).to(device)
+    policy = PolicyNetwork(state_dim, action_dim).to(device)
     params_parser = util.ConfigParser(uvd.UVDParams)
     params = params_parser.parse(_config)
-    agent = uvd.UVDTD3(functools.partial(fetch.make_env, env_name, progressive_noise, small_goal), device, density_model, q1, q2,
+    agent = uvd.UVDTD3(functools.partial(make_env, env_name, progressive_noise, small_goal), device, density_model, q1, q2,
                        policy, params)
-    fetch.train_fetch(experiment, agent, eval_env, progressive_noise, small_goal)
+    train_sawyer(experiment, agent, eval_env, progressive_noise, small_goal)
 
 
 
