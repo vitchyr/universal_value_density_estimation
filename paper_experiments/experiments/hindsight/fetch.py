@@ -170,7 +170,7 @@ def train_fetch(experiment: sacred.Experiment, agent: Any, eval_env: FetchEnv, p
             reporting.iter_record("action_norm", np.mean(action_norms).item())
 
         if iteration % 20000 == 0:
-            policy_path = f"/tmp/policy_{iteration}"
+            policy_path = f"{experiment.base_dir}/policy_{iteration}"
             with open(policy_path, 'wb') as f:
                 torch.save(agent.freeze_policy(torch.device('cpu')), f)
             experiment.add_artifact(policy_path)
@@ -187,7 +187,8 @@ def show_fetch():
     eval_env = make_env(env_name, progressive_noise, small_goal)
 
     # agent = torch.load('/home/anon/sacred_partition/param_test_1/deterministic_push_td3/1/policy_340000')
-    agent = torch.load('/home/vitchyr/mnt2/log2/uvd/sacred/fetch_push/2/policy_980000')
+    # agent = torch.load('/home/vitchyr/mnt2/log2/uvd/sacred/fetch_push/2/policy_980000')
+    agent = torch.load('/home/vitchyr/mnt2/log2/21-01-30-default/21-01-30-default_2021_01_30_23_20_31_id000--s98773/policy_0')
     success_rate = 0
     for i in range(200):
         state = eval_env.reset()
