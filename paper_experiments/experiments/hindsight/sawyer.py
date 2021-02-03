@@ -12,6 +12,7 @@ from workflow import reporting
 
 NUM_ITERS = int(3e6)
 MAX_PATH_LEN = 100
+NUM_TRAJS_PER_EPOCH = 50
 
 
 class NoNormalizer:
@@ -97,12 +98,15 @@ def make_env(env_name: str, progressive_noise: bool, small_goal: bool,
 def train_sawyer(experiment: sacred.Experiment, agent: Any, eval_env: SawyerEnv, progressive_noise: bool, small_goal: bool):
     reporting.register_field("eval_final_success")
     reporting.register_field("eval_success_rate")
-    reporting.register_field("eval_final_distance")
-    reporting.register_field("eval_distances")
-    reporting.register_field("eval_distance_hand_mean")
-    reporting.register_field("eval_distance_hand_final")
-    reporting.register_field("eval_distance_puck_mean")
-    reporting.register_field("eval_distance_puck_final")
+    keys = [
+        'distance',
+        'distance/hand',
+        'distance/puck',
+    ]
+    for k in keys:
+        new_k = "eval_{}".format(k.replace('/', '_'))
+        reporting.register_field(new_k + '_mean')
+        reporting.register_field(new_k + '_final')
     reporting.register_field("action_norm")
     reporting.finalize_fields()
     trange = tqdm.trange(NUM_ITERS, position=0, leave=True)
@@ -111,43 +115,38 @@ def train_sawyer(experiment: sacred.Experiment, agent: Any, eval_env: SawyerEnv,
             action_norms = []
             success_rate = 0
             final_success = 0
-            distances = 0
-            final_distance = -1
-            hand_distances = 0
-            final_hand_distance = -1
-            puck_distances = 0
-            final_puck_distance = -1
-            for i in range(MAX_PATH_LEN):
+            distances = {k: 0 for k in keys}
+            final_distances = {k: -1 for k in keys}
+            for i in range(NUM_TRAJS_PER_EPOCH):
                 state = eval_env.reset()
                 t = 0
+                final_dist = 0
                 while not eval_env.needs_reset:
                     action = agent.eval_action(state)
                     action_norms.append(np.linalg.norm(action))
                     state, reward, is_terminal, info = eval_env.step(action)
-                    final_distance = info['distance']
-                    distances += final_distance
-                    final_hand_distance = info['distance/hand']
-                    hand_distances += final_hand_distance
-                    final_puck_distance = info['distance/puck']
-                    puck_distances += final_puck_distance
+                    for k in keys:
+                        distances[k] += info[k]
+                        final_dist = info[k]
                     final_success = 0
                     t += 1
-                    if reward > -1. or t == 100:
+                    if reward > -1. or t == MAX_PATH_LEN:
                         success_rate += 1
                         final_success = 1
                         break
+                final_distances[k] += final_dist
             reporting.iter_record("eval_final_success", final_success)
             reporting.iter_record("eval_success_rate", success_rate)
-            reporting.iter_record("eval_final_distance", final_distance)
-            reporting.iter_record("eval_distances", distances)
-            reporting.iter_record("eval_distance_hand_mean",
-                                  hand_distances / MAX_PATH_LEN)
-            reporting.iter_record("eval_distance_hand_final",
-                                  final_hand_distance)
-            reporting.iter_record("eval_distance_puck_mean",
-                                  puck_distances / MAX_PATH_LEN)
-            reporting.iter_record("eval_distance_puck_final",
-                                  final_puck_distance)
+            for k in keys:
+                new_k = "eval_{}".format(k.replace('/', '_'))
+                reporting.iter_record(
+                    new_k + '_mean',
+                    distances[k] / (MAX_PATH_LEN * NUM_TRAJS_PER_EPOCH)
+                )
+                reporting.iter_record(
+                    new_k + '_final',
+                    final_distances[k] / NUM_TRAJS_PER_EPOCH
+                )
             reporting.iter_record("action_norm", np.mean(action_norms).item())
 
         if iteration % 20000 == 0:

@@ -15,6 +15,7 @@ from workflow import reporting
 NUM_ITERS = int(3e6)
 MAX_PATH_LEN = 100
 GOAL_DIM = 6
+NUM_TRAJS_PER_EPOCH = 50
 
 
 class NoNormalizer:
@@ -139,11 +140,9 @@ def make_env(env_name: str, progressive_noise: bool, small_goal: bool,
     return MetaworldEnv(env_name, progressive_noise, small_goal, small_goal_size)
 
 
-def train_metaworld(experiment: sacred.Experiment, agent: Any, eval_env: MetaworldEnv,
-                    progressive_noise: bool, small_goal: bool):
+def train_metaworld(experiment: sacred.Experiment, agent: Any, eval_env: MetaworldEnv, progressive_noise: bool, small_goal: bool):
     reporting.register_field("eval_final_success")
     reporting.register_field("eval_success_rate")
-    reporting.register_field("eval_final_distance")
     keys = [
         'distance',
         'distance/obj',
@@ -163,29 +162,36 @@ def train_metaworld(experiment: sacred.Experiment, agent: Any, eval_env: Metawor
             final_success = 0
             distances = {k: 0 for k in keys}
             final_distances = {k: -1 for k in keys}
-            for i in range(MAX_PATH_LEN):
+            for i in range(NUM_TRAJS_PER_EPOCH):
                 state = eval_env.reset()
                 t = 0
+                final_dist = 0
                 while not eval_env.needs_reset:
                     action = agent.eval_action(state)
                     action_norms.append(np.linalg.norm(action))
                     state, reward, is_terminal, info = eval_env.step(action)
                     for k in keys:
                         distances[k] += info[k]
-                        final_distances[k] = info[k]
+                        final_dist = info[k]
                     final_success = 0
                     t += 1
                     if reward > -1. or t == MAX_PATH_LEN:
                         success_rate += 1
                         final_success = 1
                         break
+                final_distances[k] += final_dist
             reporting.iter_record("eval_final_success", final_success)
             reporting.iter_record("eval_success_rate", success_rate)
             for k in keys:
                 new_k = "eval_{}".format(k.replace('/', '_'))
-                reporting.iter_record(new_k + '_mean',
-                                      distances[k] / MAX_PATH_LEN)
-                reporting.iter_record(new_k + '_final', final_distances[k])
+                reporting.iter_record(
+                    new_k + '_mean',
+                    distances[k] / (MAX_PATH_LEN * NUM_TRAJS_PER_EPOCH)
+                )
+                reporting.iter_record(
+                    new_k + '_final',
+                    final_distances[k] / NUM_TRAJS_PER_EPOCH
+                )
             reporting.iter_record("action_norm", np.mean(action_norms).item())
 
         if iteration % 20000 == 0:

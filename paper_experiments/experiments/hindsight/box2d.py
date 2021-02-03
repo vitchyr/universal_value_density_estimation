@@ -12,9 +12,9 @@ from algorithms.agents.hindsight import her_td3
 from generative import rnvp
 from workflow import reporting
 
-NUM_ITERS = int(3e6)
-MAX_PATH_LEN = 100
-GOAL_DIM = 15
+NUM_ITERS = int(2e5)
+GOAL_DIM = 2
+GOAL_AND_STATE_DIM = 4
 NUM_TRAJS_PER_EPOCH = 50
 
 
@@ -40,10 +40,9 @@ class DensityEstimator(torch.nn.Module):
         states = torch.squeeze(states, dim=1)
         actions = torch.squeeze(actions, dim=1)
         context = torch.cat([states, actions], dim=1)
-        # noinspection PyCallingNonCallable
         # predict relative to current state, similar to author's Fetch code
-        # first 15 are the goal, next 15 are the achieved position, and last 15 are the achieved velocity
-        goal = goal - states[:, 15:30]
+        # first GOAL_DIM are the goal, next GOAL_DIM are the achieved
+        goal = goal - states[:, GOAL_DIM:]
         goal_log_pdf = self._model(goal, context).sum(dim=1)
         return goal_log_pdf
 
@@ -53,26 +52,44 @@ class DensityEstimator(torch.nn.Module):
         return self(goal, states, actions).exp() * self._reward_factor
 
 
-class AntEnv(environment.GymEnv):
+class NoisyAction(gym.Wrapper):
+    def __init__(self, env, noise_fraction):
+        super().__init__(env)
+        action_space = env.action_space
+        self._action_noise_scale = noise_fraction * (
+                action_space.high - action_space.low)
+        self._action_shape = action_space.high.shape
+
+    def step(self, action):
+        noise = self._action_noise_scale * np.random.randn(*self._action_shape)
+        noisy_action = action + noise
+        return self.env.step(noisy_action)
+
+
+class Box2DEnv(environment.GymEnv):
     goal_dim = GOAL_DIM
 
     def __init__(
-            self, env_name: str, progressive_noise: bool, small_goal: bool,
-            small_goal_size: float = 0.005
+            self, env_name: str,
+            progressive_noise: bool,
+            max_path_len: int,
+            small_goal: bool,
+            small_goal_size: float = 0.005,
     ):
-        from multiworld.envs.mujoco import register_classic_mujoco_envs
-        from gym.wrappers.time_limit import TimeLimit
+        from multiworld.envs.pygame import register_reaching_envs
         from gym.envs.registration import registry
+        from gym.wrappers.time_limit import TimeLimit
         if env_name not in registry.env_specs:
-            register_classic_mujoco_envs()
+            register_reaching_envs()
         env = gym.make(env_name)
-        self._env = TimeLimit(env, max_episode_steps=MAX_PATH_LEN)
+        env = TimeLimit(env, max_episode_steps=max_path_len)
+        self._env = NoisyAction(env, 0.1)
         self._normalizer = NoNormalizer()
         self._env.seed(np.random.randint(10000) * 2)
         self._progressive_noise = progressive_noise
         super().__init__(self._env)
         self._obs_space = gym.spaces.box.Box(low=-np.inf, high=np.inf,
-                                             shape=(45,))
+                                             shape=(GOAL_AND_STATE_DIM,))
 
     @property
     def observation_space(self):
@@ -136,20 +153,28 @@ class AntEnv(environment.GymEnv):
         return self._state, original_reward, is_terminal, info
 
 
-def make_env(env_name: str, progressive_noise: bool, small_goal: bool,
-             small_goal_size: float = 0.005) -> AntEnv:
-    return AntEnv(env_name, progressive_noise, small_goal, small_goal_size)
+def make_env(
+        env_name: str,
+        progressive_noise: bool,
+        max_path_len,
+        small_goal: bool,
+        small_goal_size: float = 0.005,
+) -> Box2DEnv:
+    return Box2DEnv(env_name, progressive_noise, max_path_len, small_goal, small_goal_size)
 
 
-def train_ant(experiment: sacred.Experiment, agent: Any, eval_env: AntEnv,
-              progressive_noise: bool, small_goal: bool):
+def train_box2d(
+        experiment: sacred.Experiment,
+        agent: Any,
+        eval_env: Box2DEnv,
+        progressive_noise: bool,
+        max_path_len: int,
+        small_goal: bool,
+):
     reporting.register_field("eval_final_success")
     reporting.register_field("eval_success_rate")
     keys = [
-        'distance',
-        'distance/xy',
-        'distance/orientation',
-        'distance/joint',
+        'distance_to_target',
     ]
     for k in keys:
         new_k = "eval_{}".format(k.replace('/', '_'))
@@ -159,7 +184,7 @@ def train_ant(experiment: sacred.Experiment, agent: Any, eval_env: AntEnv,
     reporting.finalize_fields()
     trange = tqdm.trange(NUM_ITERS, position=0, leave=True)
     for iteration in trange:
-        if iteration % 10000 == 0:
+        if iteration % 1000 == 0:
             action_norms = []
             success_rate = 0
             final_success = 0
@@ -178,7 +203,7 @@ def train_ant(experiment: sacred.Experiment, agent: Any, eval_env: AntEnv,
                         final_dist = info[k]
                     final_success = 0
                     t += 1
-                    if reward > -1. or t == MAX_PATH_LEN:
+                    if reward > -1. or t == max_path_len:
                         success_rate += 1
                         final_success = 1
                         break
@@ -189,15 +214,13 @@ def train_ant(experiment: sacred.Experiment, agent: Any, eval_env: AntEnv,
                 new_k = "eval_{}".format(k.replace('/', '_'))
                 reporting.iter_record(
                     new_k + '_mean',
-                    distances[k] / (MAX_PATH_LEN * NUM_TRAJS_PER_EPOCH)
+                    distances[k] / (max_path_len * NUM_TRAJS_PER_EPOCH)
                 )
                 reporting.iter_record(
                     new_k + '_final',
                     final_distances[k] / NUM_TRAJS_PER_EPOCH
                 )
-            reporting.iter_record("action_norm", np.mean(action_norms).item())
-
-        if iteration % 20000 == 0:
+        if iteration % 2000 == 0:
             policy_path = f"/tmp/policy_{iteration}"
             with open(policy_path, 'wb') as f:
                 torch.save(agent.freeze_policy(torch.device('cpu')), f)
@@ -207,11 +230,3 @@ def train_ant(experiment: sacred.Experiment, agent: Any, eval_env: AntEnv,
         reporting.iterate()
         trange.set_description(f"{iteration} -- " + reporting.get_description(
             ["return", "td_loss", "env_steps"]))
-
-
-def show_ant():
-    pass
-
-
-if __name__ == '__main__':
-    show_fetch()
