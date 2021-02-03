@@ -34,10 +34,12 @@ class AsynchronousReplayAgentBase(metaclass=abc.ABCMeta):
         self._params = params
         self._device = device
         self._actor_device = torch.device(self._params.actor_device)
-        self._executor = futures.ProcessPoolExecutor(max_workers=self._params.num_envs,
-                                                     mp_context=torch.multiprocessing.get_context('spawn'),
-                                                     initializer=self._initialize_process_env,
-                                                     initargs=(make_env,))
+        self._executor = futures.ProcessPoolExecutor(
+            max_workers=self._params.num_envs,
+            mp_context=torch.multiprocessing.get_context('spawn'),
+            initializer=self._initialize_process_env,
+            initargs=(make_env,)
+        )
         self._futures = None
 
         self._make_env = make_env
