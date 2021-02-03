@@ -10,12 +10,12 @@ def main():
         policy_learning_rate=8e-4,
         critic_learning_rate=8e-4,
         density_learning_rate=2e-4,
-        # burnin=10000,
-        burnin=10,
-        batch_size=512,
-        # min_replay_size=1000,
-        min_replay_size=10,
-        replay_size=1500000,
+        burnin=10000,
+        # burnin=10,
+        batch_size=256,
+        min_replay_size=1000,
+        # min_replay_size=10,
+        replay_size=1000000,
         density_replay_size=50000,
         target_update_step=0.01,
         exploration_noise=-2.3,
@@ -35,10 +35,10 @@ def main():
     )
     target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/sawyer_push_script.py'
 
-    # n_seeds = 3
-    # mode = 'sss'
-    # exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-')
-    # print('exp_name', exp_name)
+    n_seeds = 4
+    mode = 'sss'
+    exp_name = 'icml2021--' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
+    print('exp_name', exp_name)
 
     search_space = {
         'env_name': [
@@ -62,6 +62,7 @@ def main():
                 use_gpu=True,
                 gpu_id=1,
                 prepend_date_to_exp_name=True,
+                time_in_mins=3*24*60 - 1,
             )
 
 
