@@ -4,52 +4,20 @@ import os
 import sacred
 from sacred.observers import file_storage
 import torch
-import torch.nn.functional as f
 
 from algorithms.agents.hindsight import uvd
 from easy_launcher.core import setup_logger
 from easy_logger import logger
-from generative import rnvp
 from workflow import reporting
 from workflow import util
 
-from paper_experiments.experiments.hindsight import sawyer
+from paper_experiments.experiments.hindsight import ant
 from paper_experiments.experiments.hindsight import networks
 import doodad as dd
 
 import matplotlib
 
 matplotlib.use('agg')
-
-GOAL_DIM = 4
-
-
-# noinspection PyUnresolvedReferences
-class DensityEstimator(torch.nn.Module):
-    def __init__(self, state_dim: int, action_dim: int, reward_factor: float,
-                 num_bijectors: int):
-        super().__init__()
-        self._reward_factor = reward_factor
-        self._model = rnvp.SimpleRealNVP(GOAL_DIM, state_dim + action_dim, 300,
-                                         num_bijectors)
-
-    def forward(self, goal: torch.Tensor, states: torch.Tensor,
-                actions: torch.Tensor):
-        goal = torch.squeeze(goal, dim=1)
-        states = torch.squeeze(states, dim=1)
-        actions = torch.squeeze(actions, dim=1)
-        context = torch.cat([states, actions], dim=1)
-        # noinspection PyCallingNonCallable
-        # predict relative to current state, similar to author's Fetch code
-        # obj_minus_gripper = states[:, 4:8] - states[:, 4:6]
-        goal = goal - states[:, 4:8]
-        goal_log_pdf = self._model(goal, context).sum(dim=1)
-        return goal_log_pdf
-
-    def reward(self, goal: torch.Tensor, states: torch.Tensor,
-               actions: torch.Tensor):
-        # noinspection PyCallingNonCallable
-        return self(goal, states, actions).exp() * self._reward_factor
 
 
 args_dict = dd.get_args()
@@ -112,18 +80,20 @@ def run(env_name: str, progressive_noise: bool, reward_factor: float,
     device = torch.device('cuda:{}'.format(gpu_id))
     target_dir = log_dir
     reporting.register_global_reporter(experiment, target_dir)
-    eval_env = sawyer.make_env(env_name, progressive_noise, small_goal, small_goal_size)
+    eval_env = ant.make_env(env_name, progressive_noise, small_goal,
+                              small_goal_size)
     state_dim = eval_env.observation_space.shape[0]
     action_dim = eval_env.action_space.shape[0]
     q1 = networks.QNetwork(state_dim, action_dim).to(device)
     q2 = networks.QNetwork(state_dim, action_dim).to(device)
-    density_model = DensityEstimator(state_dim, action_dim, reward_factor, num_bijectors).to(device)
+    density_model = ant.DensityEstimator(
+        state_dim, action_dim, reward_factor, num_bijectors).to(device)
     policy = networks.PolicyNetwork(state_dim, action_dim).to(device)
     params_parser = util.ConfigParser(uvd.UVDParams)
     params = params_parser.parse(_config)
-    agent = uvd.UVDTD3(functools.partial(sawyer.make_env, env_name, progressive_noise, small_goal), device, density_model, q1, q2,
-                       policy, params)
-    sawyer.train_sawyer(experiment, agent, eval_env, progressive_noise, small_goal)
-
-
-
+    agent = uvd.UVDTD3(
+        functools.partial(ant.make_env, env_name, progressive_noise,
+                          small_goal), device, density_model, q1, q2,
+        policy, params)
+    ant.train_ant(experiment, agent, eval_env, progressive_noise,
+                      small_goal)
