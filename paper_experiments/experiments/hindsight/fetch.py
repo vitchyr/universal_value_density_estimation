@@ -65,6 +65,10 @@ class FetchEnv(environment.GymEnv):
     goal_dim = 3
 
     def __init__(self, env_name: str, progressive_noise: bool, small_goal: bool, small_goal_size: float=0.005):
+        from multiworld.envs.mujoco import register_extra_fetch_envs
+        from gym.envs.registration import registry
+        if env_name not in registry.env_specs:
+            register_extra_fetch_envs()
         self._env = gym.make(env_name)
         if small_goal:
             print(f"small goal! ({small_goal_size})")
@@ -72,6 +76,8 @@ class FetchEnv(environment.GymEnv):
         if env_name == 'FetchSlide-v1':
             self._normalizer = SlideNormalizer()  # not strictly necessary but slightly improves performance (~0.1) for both methods
         if env_name == 'FetchPush-v1':
+            self._normalizer = NoNormalizer()
+        if env_name == 'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1':
             self._normalizer = NoNormalizer()
         self._env.seed(np.random.randint(10000) * 2)
         self._progressive_noise = progressive_noise
@@ -170,6 +176,7 @@ def train_fetch(experiment: sacred.Experiment, agent: Any, eval_env: FetchEnv, p
             reporting.iter_record("action_norm", np.mean(action_norms).item())
 
         if iteration % 20000 == 0:
+            print('exp dir:', experiment.base_dir)
             policy_path = f"{experiment.base_dir}/policy_{iteration}"
             with open(policy_path, 'wb') as f:
                 torch.save(agent.freeze_policy(torch.device('cpu')), f)

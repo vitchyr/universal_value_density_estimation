@@ -10,15 +10,16 @@ def main():
         policy_learning_rate=8e-4,
         critic_learning_rate=8e-4,
         density_learning_rate=2e-4,
-        burnin=10000,
+        # burnin=10000,
+        burnin=10,
         batch_size=512,
-        min_replay_size=1000,
+        # min_replay_size=1000,
+        min_replay_size=10,
         replay_size=1500000,
         density_replay_size=50000,
         target_update_step=0.01,
         exploration_noise=-2.3,
         target_action_noise=0.0,
-        env_name="FetchPush-v1",
         progressive_noise=False,
         shuffle_goals=False,
         sequence_length=4,
@@ -32,16 +33,16 @@ def main():
     exp_name = 'dev-{}'.format(
         __file__.replace('/', '-').replace('_', '-').split('.')[0]
     )
+    target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/sawyer_push_script.py'
 
     # n_seeds = 3
     # mode = 'sss'
-    exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-') + '--first-try'
-    print('exp_name', exp_name)
+    # exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-')
+    # print('exp_name', exp_name)
 
     search_space = {
         'env_name': [
-            # "FetchPush-v1",
-            'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1',
+            'SawyerPush-FixedInit-FixedGoal-x0p15-y0p7-v0',
         ],
     }
     sweeper = hyp.DeterministicHyperparameterSweeper(
@@ -49,16 +50,18 @@ def main():
     )
     for exp_id, variant in enumerate(sweeper.iterate_hyperparameters()):
         variant['exp_id'] = exp_id
+        if mode != 'local':
+            target_script = target_script.replace('/home/vitchyr/', '/global/home/users/vitchyr/')
         for _ in range(n_seeds):
             run_experiment(
                 None,
-                target_script='/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/fetch_script.py',
-                exp_name=exp_name,
+                target_script=target_script,
+                exp_name='dev-uvd',
                 mode=mode,
                 variant=variant,
                 use_gpu=True,
-                prepend_date_to_exp_name=True,
                 gpu_id=1,
+                prepend_date_to_exp_name=True,
             )
 
 

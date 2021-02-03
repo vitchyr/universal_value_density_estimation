@@ -15,11 +15,12 @@ from workflow import reporting
 class PolicyNetwork(torch.nn.Module):
     def __init__(self, state_dim: int, action_dim: int):
         super().__init__()
-        hdim = 400
-        self._h1 = torch.nn.Linear(state_dim, hdim)
-        self._h2 = torch.nn.Linear(hdim, hdim)
+        hdim1 = 400
+        hdim2 = 300
+        self._h1 = torch.nn.Linear(state_dim, hdim1)
+        self._h2 = torch.nn.Linear(hdim1, hdim2)
 
-        self._mean_out = torch.nn.Linear(hdim, action_dim)
+        self._mean_out = torch.nn.Linear(hdim2, action_dim)
         torch.nn.init.constant_(self._mean_out.bias, 0.)
         torch.nn.init.normal_(self._mean_out.weight, std=0.01)
         self._action_dim = action_dim
@@ -62,12 +63,14 @@ class SlideNormalizer:
 
 
 class SawyerEnv(environment.GymEnv):
-    goal_dim = 2
+    goal_dim = 4
 
     def __init__(self, env_name: str, progressive_noise: bool, small_goal: bool, small_goal_size: float=0.005):
         from multiworld.envs.mujoco import register_mujoco_envs
+        from gym.wrappers.time_limit import TimeLimit
         register_mujoco_envs()
-        self._env = gym.make(env_name)
+        env = gym.make(env_name)
+        self._env = TimeLimit(env, max_episode_steps=100)
         if small_goal:
             print(f"small goal! ({small_goal_size})")
             self._env.unwrapped.distance_threshold = small_goal_size
@@ -75,20 +78,17 @@ class SawyerEnv(environment.GymEnv):
         self._env.seed(np.random.randint(10000) * 2)
         self._progressive_noise = progressive_noise
         super().__init__(self._env)
-        self._obs_space = gym.spaces.box.Box(low=-np.inf, high=np.inf, shape=(28,))
+        self._obs_space = gym.spaces.box.Box(low=-np.inf, high=np.inf, shape=(8,))
 
     @property
     def observation_space(self):
         return self._obs_space
 
     def reset(self):
-        while True:
-            state = super().reset()
-            # reset environment if goal already fulfilled as described in HER paper
-            if self._env.compute_reward(state['achieved_goal'], state['desired_goal'], None) != 0.:
-                state = self._normalizer.normalize_state(state)
-                self._state = np.concatenate([state['desired_goal'], state['observation']])
-                return self._state
+        state = super().reset()
+        state = self._normalizer.normalize_state(state)
+        self._state = np.concatenate([state['desired_goal'], state['observation']])
+        return self._state
 
     def replace_goals(self, transition_sequence: her_td3.HerTransitionSequence, goals: torch.Tensor,
                       replacement_probability: float):
@@ -120,6 +120,7 @@ class SawyerEnv(environment.GymEnv):
             #print(state['desired_goal'])
         state = self._normalizer.normalize_state(state)
         info['achieved_goal'] = state['achieved_goal']
+        info['distance'] = np.linalg.norm(state['achieved_goal'] - state['desired_goal'])
         self._state = np.concatenate([state['desired_goal'], state['observation']])
 
         return self._state, original_reward, is_terminal, info
