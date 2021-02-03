@@ -1,3 +1,4 @@
+# syntax = docker/dockerfile:experimental
 # We need the CUDA base dockerfile to enable GPU rendering
 # on hosts with GPUs.
 # The image below is a pinned version of nvidia/cuda:9.1-cudnn7-devel-ubuntu16.04 (from Jan 2018)
@@ -119,7 +120,8 @@ RUN pip install torchvision
 ########
 RUN curl -o /usr/local/bin/patchelf https://s3-us-west-2.amazonaws.com/openai-sci-artifacts/manual-builds/patchelf_0.9_amd64.elf \
     && chmod +x /usr/local/bin/patchelf
-RUN pip install gym[all]==0.12.5
+#COPY ./files/mjkey.txt /root/.mujoco/mjkey.txt
+RUN --mount=type=secret,id=mujocokey,dst=/root/.mujoco/mjkey.txt pip install gym[all]==0.12.5
 
 ##########################################################
 ### Extra

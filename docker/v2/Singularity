@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: vitchyr/uvd_v1:latest
+From: vitchyr/uvd-v2:latest
 
 %post
     mkdir -p /global/scratch
