@@ -35,9 +35,9 @@ def main():
     )
     target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/sawyer_push_script.py'
 
-    n_seeds = 4
-    mode = 'sss'
-    exp_name = 'icml2021--' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
+    # n_seeds = 4
+    # mode = 'sss'
+    # exp_name = 'icml2021--' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
     print('exp_name', exp_name)
 
     search_space = {

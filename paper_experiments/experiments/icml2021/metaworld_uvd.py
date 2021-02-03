@@ -31,7 +31,7 @@ def main():
     exp_name = 'dev-{}'.format(
         __file__.replace('/', '-').replace('_', '-').split('.')[0]
     )
-    target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/ant_script.py'
+    target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/metaworld_script.py'
 
     n_seeds = 2
     mode = 'sss'
@@ -40,7 +40,8 @@ def main():
 
     search_space = {
         'env_name': [
-            'AntFullPositionFixedGoal-x5-y5-v0',
+            'SawyerWindow-v0',
+            'SawyerFaucet-v0',
         ],
     }
     sweeper = hyp.DeterministicHyperparameterSweeper(
