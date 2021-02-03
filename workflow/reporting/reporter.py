@@ -47,7 +47,7 @@ class SimpleReporter(ReporterBase):
         pass
 
     def get_description(self, names: Sequence[str]):
-        return ", ".join([f"{name}: {self._fields.get(name, np.nan)}" for name in names])
+        return ", ".join([f"{name}: {self._fields.get(name, np.nan):.4g}" for name in names])
 
 
 class Reporter(SimpleReporter):

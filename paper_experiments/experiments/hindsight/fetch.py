@@ -12,6 +12,10 @@ from algorithms.agents.hindsight import her_td3
 from workflow import reporting
 
 
+NUM_ITERS = int(3e6)
+MAX_PATH_LEN = 50
+
+
 class PolicyNetwork(torch.nn.Module):
     def __init__(self, state_dim: int, action_dim: int):
         super().__init__()
@@ -143,12 +147,7 @@ def train_fetch(experiment: sacred.Experiment, agent: Any, eval_env: FetchEnv, p
     reporting.register_field("eval_distances")
     reporting.register_field("action_norm")
     reporting.finalize_fields()
-    if progressive_noise:
-        trange = tqdm.trange(2000000)
-    elif small_goal:
-        trange = tqdm.trange(2000000)
-    else:
-        trange = tqdm.trange(2000000)
+    trange = tqdm.trange(NUM_ITERS, position=0, leave=True)
     for iteration in trange:
         if iteration % 10000 == 0:
             action_norms = []
@@ -156,7 +155,7 @@ def train_fetch(experiment: sacred.Experiment, agent: Any, eval_env: FetchEnv, p
             final_success = 0
             distances = 0
             final_distance = -1
-            for i in range(50):
+            for i in range(MAX_PATH_LEN):
                 state = eval_env.reset()
                 while not eval_env.needs_reset:
                     action = agent.eval_action(state)

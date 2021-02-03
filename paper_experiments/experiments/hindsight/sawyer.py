@@ -1,6 +1,5 @@
 from typing import Any
 import torch
-import torch.nn.functional as f
 import gym
 import gym.spaces.box
 import numpy as np
@@ -11,24 +10,8 @@ from algorithms import environment
 from algorithms.agents.hindsight import her_td3
 from workflow import reporting
 
-
-class PolicyNetwork(torch.nn.Module):
-    def __init__(self, state_dim: int, action_dim: int):
-        super().__init__()
-        hdim1 = 400
-        hdim2 = 300
-        self._h1 = torch.nn.Linear(state_dim, hdim1)
-        self._h2 = torch.nn.Linear(hdim1, hdim2)
-
-        self._mean_out = torch.nn.Linear(hdim2, action_dim)
-        torch.nn.init.constant_(self._mean_out.bias, 0.)
-        torch.nn.init.normal_(self._mean_out.weight, std=0.01)
-        self._action_dim = action_dim
-
-    def forward(self, states: torch.Tensor):
-        x = f.leaky_relu(self._h1(states))
-        x = f.leaky_relu(self._h2(x))
-        return f.tanh(self._mean_out(x))
+NUM_ITERS = int(3e6)
+MAX_PATH_LEN = 100
 
 
 class NoNormalizer:
@@ -39,29 +22,6 @@ class NoNormalizer:
         return goal
 
 
-class SlideNormalizer:
-    object_pos_shift = np.array([-0.75, -0.5, -0.45, -0.75, -0.5, -0.45])
-    object_pos_mult = np.array([1/1.25, 1/0.5, 1/0.45])
-    rotation_mult = np.array([1/np.pi, 1/np.pi, 1/np.pi])
-    object_vel_mult = np.array([1/0.08, 1/0.08, 1/0.08])
-    gripper_vel_mult = np.array([1/0.025, 1/0.025])
-    gripper_state_mult = np.array([1., 1.])
-    rotational_vel_mult = np.array([1., 1., 1.])
-    observation_mult = np.concatenate([object_pos_mult, object_pos_mult, object_pos_mult, gripper_state_mult, rotation_mult,
-                                       object_vel_mult, rotational_vel_mult, object_vel_mult, gripper_vel_mult])
-    def normalize_state(self, state):
-        state['observation'][:6] += self.object_pos_shift
-        state['observation'] *= self.observation_mult
-        state['achieved_goal'] += self.object_pos_shift[:3]
-        state['achieved_goal'] *= self.object_pos_mult
-        state['desired_goal'] += self.object_pos_shift[:3]
-        state['desired_goal'] *= self.object_pos_mult
-        return state
-
-    def denormalize_goal(self, goal):
-        return goal/self.object_pos_mult[None] - self.object_pos_shift[None, :3]
-
-
 class SawyerEnv(environment.GymEnv):
     goal_dim = 4
 
@@ -70,7 +30,7 @@ class SawyerEnv(environment.GymEnv):
         from gym.wrappers.time_limit import TimeLimit
         register_mujoco_envs()
         env = gym.make(env_name)
-        self._env = TimeLimit(env, max_episode_steps=100)
+        self._env = TimeLimit(env, max_episode_steps=MAX_PATH_LEN)
         if small_goal:
             print(f"small goal! ({small_goal_size})")
             self._env.unwrapped.distance_threshold = small_goal_size
@@ -121,6 +81,9 @@ class SawyerEnv(environment.GymEnv):
         state = self._normalizer.normalize_state(state)
         info['achieved_goal'] = state['achieved_goal']
         info['distance'] = np.linalg.norm(state['achieved_goal'] - state['desired_goal'])
+        # this env has the goal first and then the hand
+        info['distance/puck'] = np.linalg.norm((state['achieved_goal'] - state['desired_goal'])[:2])
+        info['distance/hand'] = np.linalg.norm((state['achieved_goal'] - state['desired_goal'])[2:])
         self._state = np.concatenate([state['desired_goal'], state['observation']])
 
         return self._state, original_reward, is_terminal, info
@@ -136,14 +99,13 @@ def train_sawyer(experiment: sacred.Experiment, agent: Any, eval_env: SawyerEnv,
     reporting.register_field("eval_success_rate")
     reporting.register_field("eval_final_distance")
     reporting.register_field("eval_distances")
+    reporting.register_field("eval_distance_hand_mean")
+    reporting.register_field("eval_distance_hand_final")
+    reporting.register_field("eval_distance_puck_mean")
+    reporting.register_field("eval_distance_puck_final")
     reporting.register_field("action_norm")
     reporting.finalize_fields()
-    if progressive_noise:
-        trange = tqdm.trange(2000000)
-    elif small_goal:
-        trange = tqdm.trange(2000000)
-    else:
-        trange = tqdm.trange(2000000)
+    trange = tqdm.trange(NUM_ITERS, position=0, leave=True)
     for iteration in trange:
         if iteration % 10000 == 0:
             action_norms = []
@@ -151,7 +113,11 @@ def train_sawyer(experiment: sacred.Experiment, agent: Any, eval_env: SawyerEnv,
             final_success = 0
             distances = 0
             final_distance = -1
-            for i in range(100):
+            hand_distances = 0
+            final_hand_distance = -1
+            puck_distances = 0
+            final_puck_distance = -1
+            for i in range(MAX_PATH_LEN):
                 state = eval_env.reset()
                 t = 0
                 while not eval_env.needs_reset:
@@ -160,6 +126,10 @@ def train_sawyer(experiment: sacred.Experiment, agent: Any, eval_env: SawyerEnv,
                     state, reward, is_terminal, info = eval_env.step(action)
                     final_distance = info['distance']
                     distances += final_distance
+                    final_hand_distance = info['distance/hand']
+                    hand_distances += final_hand_distance
+                    final_puck_distance = info['distance/puck']
+                    puck_distances += final_puck_distance
                     final_success = 0
                     t += 1
                     if reward > -1. or t == 100:
@@ -170,6 +140,14 @@ def train_sawyer(experiment: sacred.Experiment, agent: Any, eval_env: SawyerEnv,
             reporting.iter_record("eval_success_rate", success_rate)
             reporting.iter_record("eval_final_distance", final_distance)
             reporting.iter_record("eval_distances", distances)
+            reporting.iter_record("eval_distance_hand_mean",
+                                  hand_distances / MAX_PATH_LEN)
+            reporting.iter_record("eval_distance_hand_final",
+                                  final_hand_distance)
+            reporting.iter_record("eval_distance_puck_mean",
+                                  puck_distances / MAX_PATH_LEN)
+            reporting.iter_record("eval_distance_puck_final",
+                                  final_puck_distance)
             reporting.iter_record("action_norm", np.mean(action_norms).item())
 
         if iteration % 20000 == 0:

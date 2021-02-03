@@ -14,27 +14,14 @@ from workflow import reporting
 from workflow import util
 
 from paper_experiments.experiments.hindsight import sawyer
+from paper_experiments.experiments.hindsight import networks
 import doodad as dd
 
 import matplotlib
 
 matplotlib.use('agg')
 
-
-class QNetwork(torch.nn.Module):
-    def __init__(self, state_dim: int, action_dim: int):
-        super().__init__()
-        hdim1 = 400
-        hdim2 = 300
-        self._h1 = torch.nn.Linear(state_dim + action_dim, hdim1)
-        self._h2 = torch.nn.Linear(hdim1, hdim2)
-
-        self._v_out = torch.nn.Linear(hdim2, 1)
-
-    def forward(self, states: torch.Tensor, actions: torch.tensor):
-        x = f.leaky_relu(self._h1(torch.cat((states, actions), dim=1)))
-        x = f.leaky_relu(self._h2(x))
-        return self._v_out(x)
+GOAL_DIM = 4
 
 
 # noinspection PyUnresolvedReferences
@@ -43,17 +30,19 @@ class DensityEstimator(torch.nn.Module):
                  num_bijectors: int):
         super().__init__()
         self._reward_factor = reward_factor
-        self._model = rnvp.SimpleRealNVP(2, state_dim + action_dim, 300,
+        self._model = rnvp.SimpleRealNVP(GOAL_DIM, state_dim + action_dim, 300,
                                          num_bijectors)
 
     def forward(self, goal: torch.Tensor, states: torch.Tensor,
                 actions: torch.Tensor):
-        goal = torch.squeeze(goal, dim=1)[:, :2]
+        goal = torch.squeeze(goal, dim=1)
         states = torch.squeeze(states, dim=1)
         actions = torch.squeeze(actions, dim=1)
         context = torch.cat([states, actions], dim=1)
         # noinspection PyCallingNonCallable
-        goal = goal - states[:, 6:8]
+        # predict relative to current state, similar to author's Fetch code
+        # obj_minus_gripper = states[:, 4:8] - states[:, 4:6]
+        goal = goal - states[:, 4:8]
         goal_log_pdf = self._model(goal, context).sum(dim=1)
         return goal_log_pdf
 
@@ -127,10 +116,10 @@ def run(env_name: str, progressive_noise: bool, reward_factor: float,
     eval_env = sawyer.make_env(env_name, progressive_noise, small_goal, small_goal_size)
     state_dim = eval_env.observation_space.shape[0]
     action_dim = eval_env.action_space.shape[0]
-    q1 = QNetwork(state_dim, action_dim).to(device)
-    q2 = QNetwork(state_dim, action_dim).to(device)
+    q1 = networks.QNetwork(state_dim, action_dim).to(device)
+    q2 = networks.QNetwork(state_dim, action_dim).to(device)
     density_model = DensityEstimator(state_dim, action_dim, reward_factor, num_bijectors).to(device)
-    policy = sawyer.PolicyNetwork(state_dim, action_dim).to(device)
+    policy = networks.PolicyNetwork(state_dim, action_dim).to(device)
     params_parser = util.ConfigParser(uvd.UVDParams)
     params = params_parser.parse(_config)
     agent = uvd.UVDTD3(functools.partial(sawyer.make_env, env_name, progressive_noise, small_goal), device, density_model, q1, q2,
