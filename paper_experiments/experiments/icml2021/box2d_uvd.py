@@ -14,7 +14,7 @@ def main():
         batch_size=256,
         min_replay_size=100,
         replay_size=100000,
-        density_replay_size=50000,
+        density_replay_size=5000,
         target_update_step=0.01,
         exploration_noise=-2.3,
         target_action_noise=0.0,
@@ -33,9 +33,9 @@ def main():
     )
     target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/box2d_script.py'
 
-    # n_seeds = 2
-    # mode = 'sss'
-    # exp_name = 'icml2021--' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
+    n_seeds = 4
+    mode = 'htp'
+    exp_name = 'icml2021--' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
     print('exp_name', exp_name)
 
     search_space = {

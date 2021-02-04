@@ -37,7 +37,7 @@ def main():
     n_seeds = 4
     # mode = 'sss'
     mode = 'htp'
-    # base_exp_name = 'icml2021--' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
+    base_exp_name = 'icml2021--uvd-' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
     exp_id = 0
 
     env_name = 'SawyerPush-FixedInit-FixedGoal-x0p15-y0p7-v0'
@@ -90,7 +90,7 @@ def run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
                 exp_name=exp_name,
                 mode=mode,
                 variant=variant,
-                use_gpu=True,
+                use_gpu=False,
                 gpu_id=1,
                 prepend_date_to_exp_name=True,
                 time_in_mins=3 * 24 * 60 - 1,
