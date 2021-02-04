@@ -205,7 +205,7 @@ def train_box2d(
                         final_distance_this_loop[k] = info[k]
                     final_success = 0
                     t += 1
-                    if reward > -1. or t == MAX_PATH_LEN:
+                    if reward > -1. or t == max_path_len:
                         success_rate += 1
                         final_success = 1
                         break
