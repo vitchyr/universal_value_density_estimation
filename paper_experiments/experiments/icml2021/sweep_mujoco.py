@@ -34,9 +34,9 @@ def main():
         __file__.replace('/', '-').replace('_', '-').split('.')[0]
     )
 
-    n_seeds = 4
-    # mode = 'sss'
-    mode = 'htp'
+    n_seeds = 2
+    mode = 'sss'
+    # mode = 'htp'
     base_exp_name = 'icml2021--uvd-' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
     exp_id = 0
 
@@ -90,8 +90,8 @@ def run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
                 exp_name=exp_name,
                 mode=mode,
                 variant=variant,
-                use_gpu=False,
-                gpu_id=1,
+                use_gpu=True,
+                # gpu_id=1,
                 prepend_date_to_exp_name=True,
                 time_in_mins=3 * 24 * 60 - 1,
             )

@@ -10,7 +10,7 @@ from algorithms import environment
 from algorithms.agents.hindsight import her_td3
 from workflow import reporting
 
-NUM_ITERS = int(3e6)
+NUM_ITERS = int(1e6)
 MAX_PATH_LEN = 100
 NUM_TRAJS_PER_EPOCH = 50
 

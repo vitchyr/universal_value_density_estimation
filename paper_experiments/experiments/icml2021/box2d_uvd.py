@@ -33,8 +33,8 @@ def main():
     )
     target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/box2d_script.py'
 
-    n_seeds = 4
-    mode = 'htp'
+    n_seeds = 2
+    # mode = 'htp'
     exp_name = 'icml2021--' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
     print('exp_name', exp_name)
 
@@ -62,10 +62,10 @@ def main():
             run_experiment(
                 None,
                 target_script=target_script,
-                exp_name='dev-uvd',
+                exp_name=exp_name,
                 mode=mode,
                 variant=variant,
-                use_gpu=True,
+                use_gpu=False,
                 gpu_id=1,
                 prepend_date_to_exp_name=True,
                 time_in_mins=3*24*60 - 1,
