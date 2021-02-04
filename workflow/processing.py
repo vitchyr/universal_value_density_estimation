@@ -30,6 +30,11 @@ class Experiment:
 
     def record(self):
         db_path = self._run['info']['records']
+        print(db_path)
+        db_path = db_path.replace(
+            '/global/scratch/vitchyr/doodad-log-since-2021-01-27',
+            '/home/vitchyr/mnt2/log2/',
+        )
         conn = sqlite3.connect(db_path)
         df = pd.read_sql_query("select * from records", conn)
         if len(df) > 0:

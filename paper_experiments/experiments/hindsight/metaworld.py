@@ -166,7 +166,7 @@ def train_metaworld(experiment: sacred.Experiment, agent: Any, eval_env: Metawor
             for i in range(NUM_TRAJS_PER_EPOCH):
                 state = eval_env.reset()
                 t = 0
-                final_dist = 0
+                final_distance_this_loop = {k: 0 for k in keys}
                 while not eval_env.needs_reset:
                     action = agent.eval_action(state)
                     action_norms.append(np.linalg.norm(action))
@@ -174,14 +174,15 @@ def train_metaworld(experiment: sacred.Experiment, agent: Any, eval_env: Metawor
                     n_steps_total += 1
                     for k in keys:
                         distances[k] += info[k]
-                        final_dist = info[k]
+                        final_distance_this_loop[k] = info[k]
                     final_success = 0
                     t += 1
                     if reward > -1. or t == MAX_PATH_LEN:
                         success_rate += 1
                         final_success = 1
                         break
-                final_distances[k] += final_dist
+                for k in keys:
+                    final_distances[k] += final_distance_this_loop[k]
             reporting.iter_record("eval_final_success", final_success)
             reporting.iter_record("eval_success_rate", success_rate)
             for k in keys:
