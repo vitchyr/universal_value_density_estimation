@@ -189,7 +189,8 @@ def train_box2d(
             success_rate = 0
             final_success = 0
             distances = {k: 0 for k in keys}
-            final_distances = {k: -1 for k in keys}
+            final_distances = {k: 0 for k in keys}
+            n_steps_total = 0
             for i in range(NUM_TRAJS_PER_EPOCH):
                 state = eval_env.reset()
                 t = 0
@@ -198,6 +199,7 @@ def train_box2d(
                     action = agent.eval_action(state)
                     action_norms.append(np.linalg.norm(action))
                     state, reward, is_terminal, info = eval_env.step(action)
+                    n_steps_total += 1
                     for k in keys:
                         distances[k] += info[k]
                         final_dist = info[k]
@@ -214,12 +216,13 @@ def train_box2d(
                 new_k = "eval_{}".format(k.replace('/', '_'))
                 reporting.iter_record(
                     new_k + '_mean',
-                    distances[k] / (max_path_len * NUM_TRAJS_PER_EPOCH)
+                    distances[k] / n_steps_total
                 )
                 reporting.iter_record(
                     new_k + '_final',
                     final_distances[k] / NUM_TRAJS_PER_EPOCH
                 )
+            reporting.iter_record("action_norm", np.mean(action_norms).item())
         if iteration % 2000 == 0:
             policy_path = f"/tmp/policy_{iteration}"
             with open(policy_path, 'wb') as f:
