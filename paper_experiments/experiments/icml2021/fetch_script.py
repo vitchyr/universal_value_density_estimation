@@ -35,7 +35,7 @@ class DensityEstimator(torch.nn.Module):
 
     def forward(self, goal: torch.Tensor, states: torch.Tensor,
                 actions: torch.Tensor):
-        goal = torch.squelfeze(goal, dim=1)[:, :2]
+        goal = torch.squeeze(goal, dim=1)[:, :2]
         states = torch.squeeze(states, dim=1)
         actions = torch.squeeze(actions, dim=1)
         context = torch.cat([states, actions], dim=1)
