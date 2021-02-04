@@ -34,9 +34,9 @@ def main():
         __file__.replace('/', '-').replace('_', '-').split('.')[0]
     )
 
-    # n_seeds = 2
-    # mode = 'sss'
-    # base_exp_name = 'icml2021--uvd-' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
+    n_seeds = 2
+    mode = 'sss'
+    base_exp_name = 'icml2021--uvd-take2-' + __file__.split('/')[-1].split('.')[0].replace('_', '-')
     exp_id = 0
 
     env_name = 'SawyerPush-FixedInit-FixedGoal-x0p15-y0p7-v0'
@@ -45,29 +45,29 @@ def main():
     exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
     print('exp_name', exp_name)
 
-    # env_name = 'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1'
-    # exp_name = base_exp_name + '-fetch-push'
-    # target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/fetch_script.py'
-    # exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
-    # print('exp_name', exp_name)
-    #
-    # env_name = 'AntFullPositionFixedGoal-x5-y5-v0'
-    # exp_name = base_exp_name + '-ant'
-    # target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/ant_script.py'
-    # exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
-    # print('exp_name', exp_name)
-    #
-    # env_name = 'SawyerWindow-v0'
-    # exp_name = base_exp_name + '-sawyer-window'
-    # target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/metaworld_script.py'
-    # exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
-    # print('exp_name', exp_name)
-    #
-    # env_name = 'SawyerFaucet-v0'
-    # exp_name = base_exp_name + '-sawyer-faucet'
-    # target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/metaworld_script.py'
-    # exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
-    # print('exp_name', exp_name)
+    env_name = 'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1'
+    exp_name = base_exp_name + '-fetch-push'
+    target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/fetch_script.py'
+    exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
+    print('exp_name', exp_name)
+
+    env_name = 'AntFullPositionFixedGoal-x5-y5-v0'
+    exp_name = base_exp_name + '-ant'
+    target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/ant_script.py'
+    exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
+    print('exp_name', exp_name)
+
+    env_name = 'SawyerWindow-v0'
+    exp_name = base_exp_name + '-sawyer-window'
+    target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/metaworld_script.py'
+    exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
+    print('exp_name', exp_name)
+
+    env_name = 'SawyerFaucet-v0'
+    exp_name = base_exp_name + '-sawyer-faucet'
+    target_script = '/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/metaworld_script.py'
+    exp_id = run_sweep(env_name, exp_id, mode, n_seeds, target_script, variant, exp_name)
+    print('exp_name', exp_name)
 
     del exp_id
 
