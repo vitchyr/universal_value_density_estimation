@@ -80,9 +80,7 @@ class FetchEnv(environment.GymEnv):
             self._env.unwrapped.distance_threshold = small_goal_size
         if env_name == 'FetchSlide-v1':
             self._normalizer = SlideNormalizer()  # not strictly necessary but slightly improves performance (~0.1) for both methods
-        if env_name == 'FetchPush-v1':
-            self._normalizer = NoNormalizer()
-        if env_name == 'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1':
+        else:
             self._normalizer = NoNormalizer()
         self._env.seed(np.random.randint(10000) * 2)
         self._progressive_noise = progressive_noise

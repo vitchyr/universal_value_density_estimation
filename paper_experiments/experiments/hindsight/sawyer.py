@@ -83,8 +83,9 @@ class SawyerEnv(environment.GymEnv):
         info['achieved_goal'] = state['achieved_goal']
         info['distance'] = np.linalg.norm(state['achieved_goal'] - state['desired_goal'])
         # this env has the goal first and then the hand
-        info['distance/puck'] = np.linalg.norm((state['achieved_goal'] - state['desired_goal'])[:2])
-        info['distance/hand'] = np.linalg.norm((state['achieved_goal'] - state['desired_goal'])[2:])
+        # Fixed 4 Feb 2021, 3:05PM: swap these back to the proper indices!
+        info['distance/puck'] = np.linalg.norm((state['achieved_goal'] - state['desired_goal'])[2:])
+        info['distance/hand'] = np.linalg.norm((state['achieved_goal'] - state['desired_goal'])[:2])
         self._state = np.concatenate([state['desired_goal'], state['observation']])
 
         return self._state, original_reward, is_terminal, info

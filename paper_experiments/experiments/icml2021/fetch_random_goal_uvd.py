@@ -11,10 +11,8 @@ def main():
         critic_learning_rate=8e-4,
         density_learning_rate=2e-4,
         burnin=10000,
-        # burnin=10,
         batch_size=512,
         min_replay_size=1000,
-        # min_replay_size=10,
         replay_size=1500000,
         density_replay_size=50000,
         target_update_step=0.01,
@@ -43,7 +41,7 @@ def main():
     search_space = {
         'env_name': [
             # "FetchPush-v1",
-            'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1',
+            'FetchPush-FixedInit-RandomGoal-v1',
         ],
     }
     sweeper = hyp.DeterministicHyperparameterSweeper(
