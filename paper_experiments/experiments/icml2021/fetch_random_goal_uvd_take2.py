@@ -33,9 +33,9 @@ def main():
         __file__.replace('/', '-').replace('_', '-').split('.')[0]
     )
 
-    # n_seeds = 3
-    # mode = 'sss'
-    exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-') + '--first-try'
+    n_seeds = 4
+    mode = 'sss'
+    exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-')
     print('exp_name', exp_name)
 
     search_space = {
@@ -58,7 +58,7 @@ def main():
                 variant=variant,
                 use_gpu=True,
                 prepend_date_to_exp_name=True,
-                gpu_id=1,
+                time_in_mins=3*24*60-1,
             )
 
 
