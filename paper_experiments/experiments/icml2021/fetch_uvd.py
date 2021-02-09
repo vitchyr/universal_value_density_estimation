@@ -37,13 +37,14 @@ def main():
 
     # n_seeds = 3
     # mode = 'sss'
-    exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-') + '--first-try'
+    exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-') + '--take4'
     print('exp_name', exp_name)
 
     search_space = {
         'env_name': [
             # "FetchPush-v1",
-            'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1',
+            "FetchPush-Original-v1",
+            # 'FetchPush-FixedInit-FixedGoal-x0p15-y0p15-v1',
         ],
     }
     sweeper = hyp.DeterministicHyperparameterSweeper(

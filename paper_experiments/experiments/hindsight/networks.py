@@ -22,10 +22,8 @@ class PolicyNetwork(torch.nn.Module):
 
 
 class QNetwork(torch.nn.Module):
-    def __init__(self, state_dim: int, action_dim: int):
+    def __init__(self, state_dim: int, action_dim: int, hdim1=400, hdim2=300):
         super().__init__()
-        hdim1 = 400
-        hdim2 = 300
         self._h1 = torch.nn.Linear(state_dim + action_dim, hdim1)
         self._h2 = torch.nn.Linear(hdim1, hdim2)
 

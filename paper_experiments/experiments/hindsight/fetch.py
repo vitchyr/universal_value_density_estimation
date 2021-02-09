@@ -18,13 +18,12 @@ NUM_TRAJS_PER_EPOCH = 50
 
 
 class PolicyNetwork(torch.nn.Module):
-    def __init__(self, state_dim: int, action_dim: int):
+    def __init__(self, state_dim: int, action_dim: int, hdim1=400, hdim2=300):
         super().__init__()
-        hdim = 400
-        self._h1 = torch.nn.Linear(state_dim, hdim)
-        self._h2 = torch.nn.Linear(hdim, hdim)
+        self._h1 = torch.nn.Linear(state_dim, hdim1)
+        self._h2 = torch.nn.Linear(hdim1, hdim2)
 
-        self._mean_out = torch.nn.Linear(hdim, action_dim)
+        self._mean_out = torch.nn.Linear(hdim2, action_dim)
         torch.nn.init.constant_(self._mean_out.bias, 0.)
         torch.nn.init.normal_(self._mean_out.weight, std=0.01)
         self._action_dim = action_dim
