@@ -35,9 +35,9 @@ def main():
         __file__.replace('/', '-').replace('_', '-').split('.')[0]
     )
 
-    # n_seeds = 3
-    # mode = 'sss'
-    exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-') + '--take4'
+    n_seeds = 4
+    mode = 'sss'
+    exp_name = __file__.split('/')[-1].split('.')[0].replace('_', '-') + '--take4-brc'
     print('exp_name', exp_name)
 
     search_space = {
@@ -50,20 +50,25 @@ def main():
     sweeper = hyp.DeterministicHyperparameterSweeper(
         search_space, default_parameters=variant,
     )
+    target_script='/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/fetch_script.py'
     for exp_id, variant in enumerate(sweeper.iterate_hyperparameters()):
         variant['exp_id'] = exp_id
+        if mode != 'local':
+            target_script = target_script.replace('/home/vitchyr/', '/global/home/users/vitchyr/')
         for _ in range(n_seeds):
             run_experiment(
                 None,
-                target_script='/home/vitchyr/git/universal_value_density_estimation/paper_experiments/experiments/icml2021/fetch_script.py',
+                target_script=target_script,
                 exp_name=exp_name,
                 mode=mode,
                 variant=variant,
                 use_gpu=True,
                 prepend_date_to_exp_name=True,
-                gpu_id=1,
+                # gpu_id=1,
+                time_in_mins=3*24*60-1,
             )
 
+    print(exp_name)
 
 if __name__ == '__main__':
     main()
